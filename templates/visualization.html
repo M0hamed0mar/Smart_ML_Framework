@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1><i class="fas fa-chart-bar"></i> Data Visualization</h1>
+        <p>Explore your data through interactive charts and visualizations.</p>
+    </div>
+</div>
+
+<!-- Automatic Plots Section -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-magic"></i> Automatic Plots</h2>
+        <p>Automatically generated visualizations for all numeric columns in your dataset</p>
+    </div>
+    <div class="card-body">
+        {% if plots %}
+        <div class="plots-container">
+            {% for col, plot_html in plots.items() %}
+            <div class="plot-card">
+                <div class="plot-header">
+                    <h4>{{ col }}</h4>
+                    <span class="badge badge-primary">Histogram</span>
+                </div>
+                <div class="plot-content">
+                    {{ plot_html | safe }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-chart-line"></i>
+            <h3>No Data Available</h3>
+            <p>Please upload a dataset in the Data Information section to generate visualizations.</p>
+            <a href="{{ url_for('data_info') }}" class="btn btn-primary">
+                <i class="fas fa-database"></i> Go to Data Information
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Custom Plot Section -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-paint-brush"></i> Custom Plot Generator</h2>
+        <p>Create customized visualizations based on your specific requirements</p>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('visualization') }}" method="post" class="custom-plot-form">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="x_col">
+                        <i class="fas fa-xmark"></i> X Axis Column
+                    </label>
+                    <select id="x_col" name="x_col" required class="form-select">
+                        <option value="">-- Select X Column --</option>
+                        {% for c in columns %}
+                        <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="y_col">
+                        <i class="fas fa-ymark"></i> Y Axis Column (Optional)
+                    </label>
+                    <select id="y_col" name="y_col" class="form-select">
+                        <option value="">-- Select Y Column --</option>
+                        {% for c in columns %}
+                        <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="plot_type">
+                        <i class="fas fa-chart-line"></i> Plot Type
+                    </label>
+                    <select id="plot_type" name="plot_type" class="form-select">
+                        <option value="histogram">Histogram</option>
+                        <option value="scatter">Scatter Plot</option>
+                        <option value="box">Box Plot</option>
+                        <option value="bar">Bar Chart</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="color_col">
+                        <i class="fas fa-palette"></i> Color / Group By (Optional)
+                    </label>
+                    <select id="color_col" name="color_col" class="form-select">
+                        <option value="">-- Select Color Column --</option>
+                        {% for c in columns %}
+                        <option value="{{ c }}">{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-large">
+                    <i class="fas fa-plus"></i> Generate Custom Plot
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if custom_plot_html %}
+<!-- Custom Plot Result -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-check-circle"></i> Custom Plot Result</h2>
+    </div>
+    <div class="card-body">
+        <div class="plot-result">
+            {{ custom_plot_html | safe }}
+        </div>
+        <div class="plot-actions">
+            <button class="btn btn-secondary" onclick="downloadPlot()">
+                <i class="fas fa-download"></i> Download Plot
+            </button>
+            <button class="btn btn-secondary" onclick="sharePlot()">
+                <i class="fas fa-share"></i> Share
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .plots-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        margin-top: 1rem;
+        width: 100%;
+    }
+
+    .plot-card {
+        width: 100%;
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .plot-content {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        overflow: hidden !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+    }
+
+    .plot-content .js-plotly-plot,
+    .plot-content .plotly {
+        width: 90% !important;
+        max-width: 90% !important;
+        margin: 0 auto !important;
+        display: block !important;
+    }
+
+    .plotly-graph-div {
+        width: 100% !important;
+        height: 400px !important;
+        margin: 0 auto !important;
+    }
+
+    .plot-card {
+        width: 100%;
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        overflow: hidden;
+    }
+
+    .plots-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        margin-top: 1rem;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .plot-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+
+    .plot-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .plot-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+
+    .plot-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .plot-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .plot-header h4 {
+        color: var(--text);
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    .plot-content {
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .custom-plot-form {
+        margin-top: 1rem;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-select {
+        padding: 0.875rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+    }
+
+    .plot-result {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .plot-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--muted);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .empty-state h3 {
+        margin-bottom: 0.5rem;
+        color: var(--text);
+    }
+
+    .empty-state p {
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .plots-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .plot-actions {
+            flex-direction: column;
+        }
+
+        .plotly-graph-div {
+            margin: 0 auto !important;
+            display: block !important;
+        }
+
+        @media (max-width: 768px) {
+            .plot-content {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .plot-content .js-plotly-plot,
+            .plot-content .plotly {
+                min-width: 600px !important;
+            }
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize plot type based on selections
+        const plotTypeSelect = document.getElementById('plot_type');
+        const yColSelect = document.getElementById('y_col');
+        const colorColSelect = document.getElementById('color_col');
+
+        function updatePlotTypeOptions() {
+            const xCol = document.getElementById('x_col').value;
+            const yCol = yColSelect.value;
+
+            // Enable/disable plot types based on selections
+            if (!yCol) {
+                // Only X column selected - allow histogram
+                plotTypeSelect.value = 'histogram';
+                Array.from(plotTypeSelect.options).forEach(option => {
+                    option.disabled = option.value !== 'histogram';
+                });
+            } else {
+                // Both X and Y selected - allow all except histogram
+                Array.from(plotTypeSelect.options).forEach(option => {
+                    option.disabled = option.value === 'histogram';
+                });
+                if (plotTypeSelect.value === 'histogram') {
+                    plotTypeSelect.value = 'scatter';
+                }
+            }
+        }
+
+        document.getElementById('x_col').addEventListener('change', updatePlotTypeOptions);
+        yColSelect.addEventListener('change', updatePlotTypeOptions);
+
+        // Initialize form validation
+        const form = document.querySelector('.custom-plot-form');
+        form.addEventListener('submit', function (e) {
+            const xCol = document.getElementById('x_col').value;
+            if (!xCol) {
+                e.preventDefault();
+                showNotification('Please select an X-axis column', 'error');
+            }
+        });
+
+        // Add sample data for demonstration
+        if (!{{ plots | length }}) {
+        // Show tutorial for first-time users
+        console.log('Showing visualization tutorial');
+    }
+    });
+    function downloadPlot() {
+        showNotification('Plot download feature coming soon!', 'info');
+    }
+
+    function sharePlot() {
+        showNotification('Plot sharing feature coming soon!', 'info');
+    }
+</script>
+{% endblock %}

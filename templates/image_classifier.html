@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1><i class="fas fa-image"></i> Image Classifier AI</h1>
+        <p>Upload an image to identify its content using advanced Deep Learning models.</p>
+    </div>
+</div>
+
+<!-- Upload Section -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-cloud-upload-alt"></i> Upload Image</h2>
+        <p>Supported formats: JPG, PNG, WebP. Maximum size: 10MB</p>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('image_classifier') }}" method="post" enctype="multipart/form-data"
+            id="imageUploadForm">
+            <div class="upload-container">
+                <label for="image" class="file-upload-label large">
+                    <i class="fas fa-file-image"></i>
+                    <span class="file-upload-text">Choose Image File</span>
+                    <span class="file-upload-subtext">or drag and drop here</span>
+                    <input type="file" id="image" name="image" accept="image/*" required>
+                </label>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-large">
+                    <i class="fas fa-search"></i> Analyze Image
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if uploaded_image %}
+<!-- Display Uploaded Image -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-image"></i> Uploaded Image</h2>
+    </div>
+    <div class="card-body">
+        <div class="image-preview">
+            <img src="data:image/jpeg;base64,{{ uploaded_image | b64encode }}" alt="Uploaded Image"
+                class="uploaded-image">
+            <div class="image-overlay">
+                <span class="image-info">Ready for analysis</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if prediction_result %}
+<!-- Prediction Results -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-brain"></i> Prediction Results</h2>
+        <p>AI-powered image classification results</p>
+    </div>
+    <div class="card-body">
+        <!-- Top Prediction -->
+        <div class="prediction-card main-prediction">
+            <div class="prediction-header">
+                <h3>Top Prediction</h3>
+                <div class="confidence-indicator"
+                    style="--confidence: {{ prediction_result.top_prediction.confidence * 100 }}%;">
+                    <span class="confidence-value">{{ "%.1f"|format(prediction_result.top_prediction.confidence * 100)
+                        }}%</span>
+                </div>
+            </div>
+
+            <div class="prediction-content">
+                <div class="prediction-class">
+                    <i class="fas fa-tag"></i>
+                    <span class="class-name">{{ prediction_result.top_prediction.class_name }}</span>
+                </div>
+
+                <div class="confidence-level">
+                    <span class="confidence-badge"
+                        style="background-color: {{ prediction_result.top_prediction.fuzzy_color }};">
+                        {{ prediction_result.top_prediction.fuzzy_level }} Confidence
+                    </span>
+                </div>
+
+                <div class="prediction-recommendation">
+                    <i class="fas fa-lightbulb"></i>
+                    <p>{{ prediction_result.top_prediction.fuzzy_recommendation }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Predictions -->
+        <div class="all-predictions">
+            <h3><i class="fas fa-list"></i> All Predictions</h3>
+            <div class="predictions-list">
+                {% for pred in prediction_result.all_predictions %}
+                {% set fuzzy_info = fuzzy_confidence_assessment(pred.confidence) %}
+                <div class="prediction-item">
+                    <div class="prediction-rank">#{{ loop.index }}</div>
+                    <div class="prediction-details">
+                        <div class="prediction-class-name">{{ pred.class_name }}</div>
+                        <div class="prediction-confidence">
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: {{ pred.confidence * 100 }}%; 
+                                    background: {{ fuzzy_info.color }};"></div>
+                            </div>
+                            <span class="confidence-percentage">{{ "%.1f"|format(pred.confidence * 100) }}%</span>
+                        </div>
+                    </div>
+                    <div class="prediction-level">
+                        <span class="confidence-tag" style="background: {{ fuzzy_info.color }};">
+                            {{ fuzzy_info.level }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="prediction-actions">
+            <button class="btn btn-secondary" onclick="analyzeAnother()">
+                <i class="fas fa-redo"></i> Analyze Another Image
+            </button>
+            <button class="btn btn-primary" onclick="shareResults()">
+                <i class="fas fa-share"></i> Share Results
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .upload-container {
+        text-align: center;
+        margin: 2rem 0;
+    }
+
+    .file-upload-label.large {
+        padding: 3rem;
+        border: 2px dashed var(--border);
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: var(--card);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .file-upload-label.large:hover {
+        border-color: var(--accent);
+        background: rgba(var(--accent-rgb), 0.05);
+        transform: scale(1.02);
+    }
+
+    .file-upload-label.large i {
+        font-size: 3rem;
+        color: var(--accent);
+    }
+
+    .file-upload-text {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .file-upload-subtext {
+        font-size: 0.9rem;
+        color: var(--muted);
+    }
+
+    .image-preview {
+        position: relative;
+        max-width: 500px;
+        margin: 0 auto;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .uploaded-image {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .image-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+        color: white;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .image-info {
+        font-weight: 500;
+    }
+
+    .prediction-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .main-prediction {
+        border-left: 4px solid var(--success);
+        background: linear-gradient(135deg, var(--card), rgba(var(--success-rgb), 0.1));
+    }
+
+    .prediction-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .prediction-header h3 {
+        margin: 0;
+        color: var(--text);
+    }
+
+    .confidence-indicator {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: conic-gradient(var(--success) 0% var(--confidence), var(--border) var(--confidence) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+
+    .confidence-value {
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: var(--text);
+        background: var(--card);
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .prediction-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .prediction-class {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .confidence-level {
+        margin: 0.5rem 0;
+    }
+
+    .prediction-recommendation {
+        background: rgba(var(--info-rgb), 0.1);
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 3px solid var(--info);
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .prediction-recommendation i {
+        color: var(--info);
+        margin-top: 0.2rem;
+    }
+
+    .all-predictions {
+        margin: 2rem 0;
+    }
+
+    .all-predictions h3 {
+        margin-bottom: 1rem;
+        color: var(--text);
+    }
+
+    .predictions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .prediction-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+
+    .prediction-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .prediction-rank {
+        font-weight: bold;
+        color: var(--muted);
+        min-width: 30px;
+    }
+
+    .prediction-details {
+        flex: 1;
+    }
+
+    .prediction-class-name {
+        font-weight: 500;
+        color: var(--text);
+        margin-bottom: 0.25rem;
+    }
+
+    .prediction-confidence {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .confidence-bar {
+        flex: 1;
+        height: 6px;
+        background: var(--border);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .confidence-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+
+    .confidence-percentage {
+        font-size: 0.875rem;
+        color: var(--muted);
+        min-width: 40px;
+        text-align: right;
+    }
+
+    .confidence-tag {
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: white;
+    }
+
+    .prediction-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 768px) {
+        .file-upload-label.large {
+            padding: 2rem;
+        }
+
+        .prediction-header {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .prediction-item {
+            flex-direction: column;
+            text-align: center;
+            gap: 0.5rem;
+        }
+
+        .prediction-confidence {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .prediction-actions {
+            flex-direction: column;
+        }
+
+        .confidence-indicator {
+            width: 50px;
+            height: 50px;
+        }
+
+        .confidence-value {
+            width: 40px;
+            height: 40px;
+            font-size: 0.7rem;
+        }
+    }
+</style>
+
+<script>
+    function analyzeAnother() {
+        // Reset the form and scroll to top
+        document.getElementById('imageUploadForm').reset();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showNotification('Ready to analyze another image!', 'info');
+    }
+
+    function shareResults() {
+        if (navigator.share) {
+            navigator.share({
+                title: 'Image Classification Results',
+                text: 'Check out my image classification results from AutoML Studio!',
+                url: window.location.href
+            }).catch(() => {
+                showNotification('Sharing cancelled', 'info');
+            });
+        } else {
+            showNotification('Web Share API not supported in your browser', 'warning');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Enhance file upload with preview
+        const fileInput = document.getElementById('image');
+        if (fileInput) {
+            fileInput.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        // You could show a preview here if needed
+                        console.log('File selected:', file.name);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Add drag and drop enhancement
+        const dropZone = document.querySelector('.file-upload-label.large');
+        if (dropZone) {
+            dropZone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                this.style.borderColor = 'var(--accent)';
+                this.style.background = 'rgba(var(--accent-rgb), 0.1)';
+            });
+
+            dropZone.addEventListener('dragleave', function () {
+                this.style.borderColor = 'var(--border)';
+                this.style.background = 'var(--card)';
+            });
+
+            dropZone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                this.style.borderColor = 'var(--border)';
+                this.style.background = 'var(--card)';
+
+                if (e.dataTransfer.files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    const event = new Event('change', { bubbles: true });
+                    fileInput.dispatchEvent(event);
+                    showNotification('Image ready for analysis!', 'success');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

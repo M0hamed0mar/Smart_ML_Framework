@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1><i class="fas fa-file-upload"></i> Upload Dataset</h1>
+        <p>Get started by uploading your dataset for analysis and machine learning</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-database"></i> Upload CSV File</h2>
+        <p>Supported formats: CSV files with headers</p>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+            <div class="upload-container">
+                <label for="file" class="file-upload-label large">
+                    <i class="fas fa-file-csv"></i>
+                    <span class="file-upload-text">Choose CSV File</span>
+                    <span class="file-upload-subtext">or drag and drop here</span>
+                    <input type="file" id="file" name="file" accept=".csv" required>
+                </label>
+            </div>
+
+            <div class="form-options">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="has_header" name="has_header" checked>
+                    <label for="has_header">File contains header row</label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-large">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload & Analyze
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if df_info %}
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-check-circle"></i> Upload Successful</h2>
+    </div>
+    <div class="card-body">
+        <div class="success-message">
+            <i class="fas fa-check-circle"></i>
+            <h3>Dataset Ready for Analysis</h3>
+            <p>Your dataset has been successfully uploaded and processed.</p>
+        </div>
+
+        <div class="dataset-preview">
+            <h3><i class="fas fa-table"></i> Dataset Overview</h3>
+            <div class="preview-content">
+                <pre>{{ df_info }}</pre>
+
+                {% if columns %}
+                <div class="columns-section">
+                    <h4>Columns ({{ columns|length }})</h4>
+                    <div class="columns-grid">
+                        {% for c in columns %}
+                        <div class="column-item">
+                            <span class="column-name">{{ c }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="next-actions">
+            <a href="{{ url_for('data_info') }}" class="btn btn-primary">
+                <i class="fas fa-chart-line"></i> Detailed Analysis
+            </a>
+            <a href="{{ url_for('visualization') }}" class="btn btn-secondary">
+                <i class="fas fa-chart-bar"></i> Visualization
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+
+    .upload-container {
+        text-align: center;
+        margin: 2rem 0;
+    }
+
+    .file-upload-label.large {
+        padding: 3rem;
+        border: 2px dashed var(--border);
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: var(--card);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .file-upload-label.large:hover {
+        border-color: var(--accent);
+        background: rgba(var(--accent-rgb), 0.05);
+        transform: scale(1.02);
+    }
+
+    .file-upload-label.large i {
+        font-size: 3rem;
+        color: var(--accent);
+    }
+
+    .file-upload-text {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .file-upload-subtext {
+        font-size: 0.9rem;
+        color: var(--muted);
+    }
+
+    .form-options {
+        margin: 1.5rem 0;
+        text-align: center;
+    }
+
+    .checkbox-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+
+    .success-message {
+        text-align: center;
+        padding: 2rem;
+        background: rgba(var(--success-rgb), 0.1);
+        border-radius: 12px;
+        border-left: 4px solid var(--success);
+        margin-bottom: 2rem;
+    }
+
+    .success-message i {
+        font-size: 3rem;
+        color: var(--success);
+        margin-bottom: 1rem;
+    }
+
+    .success-message h3 {
+        color: var(--success);
+        margin-bottom: 0.5rem;
+    }
+
+    .dataset-preview {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .dataset-preview h3 {
+        margin-bottom: 1rem;
+        color: var(--text);
+    }
+
+    .preview-content pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        background: var(--bg);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        overflow-x: auto;
+    }
+
+    .columns-section {
+        margin-top: 2rem;
+    }
+
+    .columns-section h4 {
+        margin-bottom: 1rem;
+        color: var(--text);
+    }
+
+    .columns-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .column-item {
+        padding: 0.75rem;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .column-item:hover {
+        background: rgba(var(--accent-rgb), 0.1);
+        border-color: var(--accent);
+        transform: translateY(-2px);
+    }
+
+    .column-name {
+        font-weight: 500;
+        color: var(--text);
+    }
+
+    .next-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 768px) {
+        .file-upload-label.large {
+            padding: 2rem;
+        }
+
+        .columns-grid {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
+
+        .next-actions {
+            flex-direction: column;
+        }
+
+        .preview-content pre {
+            font-size: 0.75rem;
+            padding: 1rem;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const fileInput = document.getElementById('file');
+        const uploadLabel = document.querySelector('.file-upload-label.large');
+        const uploadText = uploadLabel.querySelector('.file-upload-text');
+
+        fileInput.addEventListener('change', function (e) {
+            if (e.target.files.length > 0) {
+                const fileName = e.target.files[0].name;
+                uploadText.textContent = fileName;
+                uploadLabel.classList.add('file-selected');
+                showNotification('File ready for upload!', 'success');
+            }
+        });
+
+        // Add drag and drop functionality
+        uploadLabel.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            this.style.borderColor = 'var(--accent)';
+            this.style.background = 'rgba(var(--accent-rgb), 0.1)';
+        });
+
+        uploadLabel.addEventListener('dragleave', function () {
+            this.style.borderColor = 'var(--border)';
+            this.style.background = 'var(--card)';
+        });
+
+        uploadLabel.addEventListener('drop', function (e) {
+            e.preventDefault();
+            this.style.borderColor = 'var(--border)';
+            this.style.background = 'var(--card)';
+
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                const event = new Event('change', { bubbles: true });
+                fileInput.dispatchEvent(event);
+            }
+        });
+
+        // Form validation
+        const form = document.getElementById('uploadForm');
+        form.addEventListener('submit', function () {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                submitBtn.disabled = true;
+            }
+        });
+    });
+</script>
+{% endblock %}

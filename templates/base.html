@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title if title else "AutoML Studio - Advanced Data Analysis" }}</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="topbar">
+        <div class="container">
+            <div class="logo">
+                <a href="{{ url_for('data_info') }}">
+                    <i class="fas fa-brain"></i>
+                    <span>AutoML Studio</span>
+                </a>
+            </div>
+
+            <nav class="nav">
+                <a href="{{ url_for('data_info') }}" class="{{ 'active' if request.endpoint == 'data_info' else '' }}">
+                    <i class="fas fa-database"></i>
+                    Data Information
+                </a>
+                <a href="{{ url_for('visualization') }}"
+                    class="{{ 'active' if request.endpoint == 'visualization' else '' }}">
+                    <i class="fas fa-chart-bar"></i>
+                    Visualization
+                </a>
+                <a href="{{ url_for('training') }}" class="{{ 'active' if request.endpoint == 'training' else '' }}">
+                    <i class="fas fa-cogs"></i>
+                    Training
+                </a>
+                <a href="{{ url_for('image_classifier') }}"
+                    class="{{ 'active' if request.endpoint == 'image_classifier' else '' }}">
+                    <i class="fas fa-image"></i>
+                    Image AI
+                </a>
+            </nav>
+
+            <!-- Theme Toggle -->
+            <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash-message {{ category }}">
+                <i
+                    class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'info-circle' if category == 'info' else 'exclamation-circle' }}"></i>
+                <span>{{ message }}</span>
+                <button class="flash-close">&times;</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Page Content -->
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>AutoML Studio</h3>
+                    <p>Advanced Automated Machine Learning Platform</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link"><i class="fab fa-github"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+                    </div>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="{{ url_for('data_info') }}">Data Analysis</a></li>
+                        <li><a href="{{ url_for('visualization') }}">Visualization</a></li>
+                        <li><a href="{{ url_for('training') }}">Model Training</a></li>
+                        <li><a href="{{ url_for('image_classifier') }}">Image AI</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#">Documentation</a></li>
+                        <li><a href="#">API Reference</a></li>
+                        <li><a href="#">Examples</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2023 AutoML Studio. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+
+    <!-- Additional Scripts -->
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

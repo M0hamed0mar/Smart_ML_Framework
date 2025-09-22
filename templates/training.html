@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1><i class="fas fa-cogs"></i> Model Training</h1>
+        <p>Train machine learning models on your dataset and compare their performance.</p>
+    </div>
+</div>
+
+<!-- Training Form -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-rocket"></i> Start Training</h2>
+        <p>Select the target column to train machine learning models</p>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('training') }}" method="post" id="trainingForm">
+            <div class="form-group">
+                <label for="target">
+                    <i class="fas fa-bullseye"></i> Target Column
+                </label>
+                <select id="target" name="target" required class="form-select">
+                    <option value="">-- Select Target Column --</option>
+                    {% for c in columns %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+                <small class="form-help">Select the column you want to predict</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-large">
+                    <i class="fas fa-play"></i> Start Training
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if training_summary %}
+<!-- Training Results -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-trophy"></i> Training Results</h2>
+        <p>Comparison of all trained models and their performance metrics</p>
+    </div>
+    <div class="card-body">
+        {% if results %}
+        <!-- Results Summary -->
+        <div class="results-summary">
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="summary-content">
+                        <span class="summary-label">Best Model</span>
+                        <span class="summary-value">{{ best_model_name }}</span>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="summary-content">
+                        <span class="summary-label">Best Score</span>
+                        <span class="summary-value">{{ best_score }}</span>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <div class="summary-content">
+                        <span class="summary-label">Problem Type</span>
+                        <span class="summary-value">{{ problem_type }}</span>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="summary-content">
+                        <span class="summary-label">Models Trained</span>
+                        <span class="summary-value">{{ results|length }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Models Comparison Table -->
+        <div class="table-section">
+            <h3><i class="fas fa-table"></i> Models Comparison</h3>
+            <div class="table-responsive">
+                <table class="models-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            {% if problem_type == 'classification' %}
+                            <th>Accuracy</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
+                            <th>F1 Score</th>
+                            {% else %}
+                            <th>RMSE</th>
+                            <th>MAE</th>
+                            <th>R² Score</th>
+                            {% endif %}
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr class="{{ 'best-model' if result.model == best_model_name }}">
+                            <td class="model-name">
+                                <strong>{{ result.model }}</strong>
+                                {% if result.model == best_model_name %}
+                                <span class="best-tag">
+                                    <i class="fas fa-crown"></i> Best
+                                </span>
+                                {% endif %}
+                            </td>
+                            {% if problem_type == 'classification' %}
+                            <td>{{ result.accuracy }}</td>
+                            <td>{{ result.precision }}</td>
+                            <td>{{ result.recall }}</td>
+                            <td>{{ result.f1 }}</td>
+                            {% else %}
+                            <td>{{ result.rmse }}</td>
+                            <td>{{ result.mae }}</td>
+                            <td>{{ result.r2 }}</td>
+                            {% endif %}
+                            <td>
+                                <span
+                                    class="status-badge {{ 'success' if result.model == best_model_name else 'default' }}">
+                                    {{ 'Best' if result.model == best_model_name else 'Trained' }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <form action="{{ url_for('training') }}" method="post">
+                <input type="hidden" name="target_eval"
+                    value="{{ training_summary.split('Target Column: ')[1].split('\n')[0] if 'Target Column: ' in training_summary else '' }}">
+                <input type="hidden" name="evaluate" value="true">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-chart-bar"></i> Evaluate Best Model
+                </button>
+            </form>
+
+            <form action="{{ url_for('training') }}" method="post">
+                <input type="hidden" name="save_model" value="true">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Best Model
+                </button>
+            </form>
+
+            <button onclick="showTrainingDetails()" class="btn btn-secondary">
+                <i class="fas fa-info-circle"></i> Show Details
+            </button>
+        </div>
+
+        <!-- Training Details -->
+        <div class="training-details" id="trainingDetails" style="display: none;">
+            <h3><i class="fas fa-file-alt"></i> Training Summary</h3>
+            <div class="details-content">
+                <pre>{{ training_summary }}</pre>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if evaluation_results %}
+<!-- Evaluation Results -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-chart-bar"></i> Evaluation Results</h2>
+    </div>
+    <div class="card-body">
+        <div class="metrics-grid">
+            {% for metric, value in evaluation_results.items() %}
+            <div class="metric-card">
+                <div class="metric-icon">
+                    <i
+                        class="fas fa-{{ 'check-circle' if 'accuracy' in metric.lower() else 'chart-line' if 'rmse' in metric.lower() else 'ruler' if 'mae' in metric.lower() else 'percent' if 'r2' in metric.lower() else 'info-circle' }}"></i>
+                </div>
+                <div class="metric-content">
+                    <span class="metric-name">{{ metric }}</span>
+                    <span class="metric-value">
+                        {% if value is number %}
+                        {{ "%.4f"|format(value) }}
+                        {% else %}
+                        {{ value }}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+
+    .form-help {
+        color: var(--muted);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .results-summary {
+        margin-bottom: 2rem;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+    }
+
+    .summary-icon {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--accent-rgb), 0.1);
+        color: var(--accent);
+        border-radius: 50%;
+        font-size: 1.5rem;
+    }
+
+    .summary-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .summary-label {
+        font-size: 0.875rem;
+        color: var(--muted);
+        font-weight: 500;
+    }
+
+    .summary-value {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: var(--text);
+    }
+
+    .table-section {
+        margin: 2rem 0;
+    }
+
+    .table-section h3 {
+        margin-bottom: 1rem;
+        color: var(--text);
+    }
+
+    .models-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--card);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .models-table th {
+        background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+        color: white;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .models-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .models-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .models-table tr:hover {
+        background: rgba(var(--accent-rgb), 0.03);
+    }
+
+    .models-table tr.best-model {
+        background: linear-gradient(135deg, rgba(var(--success-rgb), 0.1), rgba(var(--success-rgb), 0.05));
+        border-left: 4px solid var(--success);
+    }
+
+    .model-name {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+    }
+
+    .best-tag {
+        background: var(--success);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-badge {
+        padding: 0.5rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .status-badge.success {
+        background: rgba(var(--success-rgb), 0.1);
+        color: var(--success);
+    }
+
+    .status-badge.default {
+        background: rgba(var(--muted-rgb), 0.1);
+        color: var(--muted);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin: 2rem 0;
+        flex-wrap: wrap;
+    }
+
+    .training-details {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+    }
+
+    .details-content pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .metric-card {
+        padding: 1.5rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .metric-icon {
+        font-size: 2rem;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-name {
+        display: block;
+        font-size: 0.875rem;
+        color: var(--muted);
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-value {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--text);
+    }
+
+    @media (max-width: 768px) {
+        .summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .models-table {
+            font-size: 0.875rem;
+        }
+
+        .models-table th,
+        .models-table td {
+            padding: 0.75rem;
+        }
+    }
+</style>
+
+<script>
+    function showTrainingDetails() {
+        const details = document.getElementById('trainingDetails');
+        details.style.display = details.style.display === 'none' ? 'block' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Add form validation
+        const form = document.getElementById('trainingForm');
+        if (form) {
+            form.addEventListener('submit', function () {
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Training...';
+                    submitBtn.disabled = true;
+                }
+            });
+        }
+
+        // Add sorting functionality to the table
+        const table = document.querySelector('.models-table');
+        if (table) {
+            const headers = table.querySelectorAll('th');
+            headers.forEach((header, index) => {
+                if (index > 0) { // Don't make the first column sortable
+                    header.style.cursor = 'pointer';
+                    header.addEventListener('click', () => {
+                        sortTable(index);
+                    });
+                }
+            });
+        }
+
+        function sortTable(columnIndex) {
+            // Implementation for table sorting
+            console.log('Sorting by column:', columnIndex);
+        }
+    });
+</script>
+{% endblock %}

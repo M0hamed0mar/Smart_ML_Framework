@@ -1,0 +1,682 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1><i class="fas fa-database"></i> Data Information</h1>
+        <p>Upload your dataset to analyze its structure, statistics, and quality.</p>
+    </div>
+</div>
+
+<!-- Upload Section -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-cloud-upload-alt"></i> Upload Dataset</h2>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('data_info') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="file" class="file-upload-label">
+                        <i class="fas fa-file-csv"></i>
+                        <span class="file-upload-text">Choose CSV File</span>
+                        <input type="file" id="file" name="file" accept=".csv" required>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="has_header" name="has_header" checked>
+                        <label for="has_header">File has header row</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-large">
+                    <i class="fas fa-chart-line"></i> Upload & Analyze
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if df_info %}
+<!-- Dataset Overview -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-chart-pie"></i> Dataset Overview</h2>
+    </div>
+    <div class="card-body">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-table"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ current_df.shape[0] | default(0) }}</div>
+                    <div class="stat-label">Rows</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-columns"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ current_df.shape[1] | default(0) }}</div>
+                    <div class="stat-label">Columns</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ current_df.isna().sum().sum() | default(0) }}</div>
+                    <div class="stat-label">Missing Values</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ current_df.select_dtypes(include=['number']).shape[1] | default(0) }}
+                    </div>
+                    <div class="stat-label">Numeric Columns</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Information -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-info-circle"></i> Detailed Information</h2>
+    </div>
+    <div class="card-body">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="summary">Summary</button>
+            <button class="tab-btn" data-tab="structure">Structure</button>
+            <button class="tab-btn" data-tab="preview">Preview</button>
+        </div>
+
+        <div class="tab-content active" id="summary">
+            <div class="info-block">
+                <pre>{{ df_info }}</pre>
+            </div>
+        </div>
+
+        <div class="tab-content" id="structure">
+            <h3>Column Information</h3>
+            {% if columns %}
+            <div class="columns-grid">
+                {% for c in columns %}
+                <div class="column-item">
+                    <span class="column-name">{{ c }}</span>
+                    <span class="column-type">{{ current_df[c].dtype }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="tab-content" id="preview">
+            <h3>Data Preview (First 10 rows)</h3>
+            <div class="table-container">
+                {{ current_df.head(10).to_html(classes="data-table", index=False) | safe }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Correlation Heatmap -->
+{% if heatmap_html %}
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-fire"></i> Correlation Heatmap</h2>
+    </div>
+    <div class="card-body">
+        <div class="chart-container">
+            {{ heatmap_html | safe }}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Data Quality Report -->
+<div class="card">
+    <div class="card-header">
+        <h2><i class="fas fa-clipboard-check"></i> Data Quality Report</h2>
+    </div>
+    <div class="card-body">
+        <div class="quality-metrics">
+            <!-- Completeness Score -->
+            <div class="quality-metric">
+                <div class="metric-header">
+                    <span class="metric-label">Completeness Score</span>
+                    <span
+                        class="metric-value {{ 'excellent' if completeness > 90 else 'good' if completeness > 75 else 'poor' }}">
+                        {{ completeness }}%
+                    </span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar" style="width: {{ completeness }}%"></div>
+                </div>
+            </div>
+
+            <!-- Data Types Distribution -->
+            <div class="quality-metric">
+                <span class="metric-label">Data Types Distribution</span>
+                <div class="data-types">
+                    {% for dtype, count in data_types.items() %}
+                    <span class="data-type-tag">{{ dtype }}: {{ count }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Memory Usage -->
+            <div class="quality-metric">
+                <div class="metric-header">
+                    <span class="metric-label">Memory Usage</span>
+                    <span class="metric-value">{{ memory_usage }} MB</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="card empty-state">
+    <div class="empty-content">
+        <i class="fas fa-database"></i>
+        <h3>No Data Uploaded</h3>
+        <p>Upload a CSV file to see detailed data information and quality metrics.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Next Steps -->
+{% if current_df is not none %}
+<div class="card next-steps">
+    <div class="card-header">
+        <h2><i class="fas fa-arrow-right"></i> Next Steps</h2>
+    </div>
+    <div class="card-body">
+        <div class="actions-grid">
+            <a href="{{ url_for('visualization') }}" class="action-card">
+                <div class="action-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="action-content">
+                    <h3>Visualization</h3>
+                    <p>Create charts and plots to explore your data visually</p>
+                </div>
+                <div class="action-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </a>
+            <a href="{{ url_for('training') }}" class="action-card">
+                <div class="action-icon">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <div class="action-content">
+                    <h3>Model Training</h3>
+                    <p>Train machine learning models on your dataset</p>
+                </div>
+                <div class="action-arrow">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    /* Hero Section */
+    .hero-section {
+        margin-bottom: 2rem;
+    }
+
+    .hero-card {
+        background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+        color: white;
+        border: none;
+    }
+
+    .hero-content h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-content p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+    }
+
+    /* Form Styles */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1.5rem;
+        align-items: end;
+    }
+
+    .file-upload-label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        border: 2px dashed var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: var(--card);
+    }
+
+    .file-upload-label:hover {
+        border-color: var(--accent);
+        background: rgba(var(--accent-rgb), 0.05);
+    }
+
+    .file-upload-text {
+        margin-top: 0.5rem;
+        font-weight: 500;
+    }
+
+    .file-upload-label input[type="file"] {
+        display: none;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-actions {
+        margin-top: 1.5rem;
+        text-align: center;
+    }
+
+    .btn-large {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .stat-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: var(--card);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--accent-rgb), 0.1);
+        color: var(--accent);
+        border-radius: 50%;
+        font-size: 1.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: var(--text);
+    }
+
+    .stat-label {
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    /* Tabs */
+    .tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+        padding: 0.75rem 1.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        color: var(--muted);
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .tab-btn.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+    }
+
+    .tab-btn:hover {
+        color: var(--accent);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    /* Columns Grid */
+    .columns-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .column-item {
+        padding: 0.75rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .column-name {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+
+    .column-type {
+        font-size: 0.8rem;
+        color: var(--muted);
+    }
+
+    /* Quality Metrics */
+    .quality-metrics {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .quality-metric {
+        padding: 1rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+
+    .metric-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-label {
+        font-weight: 500;
+    }
+
+    .metric-value {
+        font-weight: bold;
+    }
+
+    .metric-value.excellent {
+        color: var(--success);
+    }
+
+    .metric-value.good {
+        color: var(--warning);
+    }
+
+    .metric-value.poor {
+        color: var(--danger);
+    }
+
+    .progress {
+        height: 8px;
+        background: var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+
+    .data-types {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .data-type-tag {
+        padding: 0.25rem 0.5rem;
+        background: rgba(var(--accent-rgb), 0.1);
+        color: var(--accent);
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+    }
+
+    .empty-content i {
+        font-size: 4rem;
+        color: var(--muted);
+        margin-bottom: 1rem;
+    }
+
+    .empty-content h3 {
+        margin-bottom: 0.5rem;
+        color: var(--text);
+    }
+
+    .empty-content p {
+        color: var(--muted);
+    }
+
+    /* Next Steps */
+    .next-steps {
+        margin-top: 2rem;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+
+    .action-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        text-decoration: none;
+        color: var(--text);
+        transition: all 0.3s ease;
+    }
+
+    .action-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-color: var(--accent);
+    }
+
+    .action-icon {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(var(--accent-rgb), 0.1);
+        color: var(--accent);
+        border-radius: 50%;
+        font-size: 1.5rem;
+    }
+
+    .action-content {
+        flex: 1;
+    }
+
+    .action-content h3 {
+        margin-bottom: 0.25rem;
+    }
+
+    .action-content p {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin: 0;
+    }
+
+    .action-arrow {
+        color: var(--muted);
+    }
+
+    /* Table Styles */
+    .table-container {
+        overflow-x: auto;
+        margin: 1rem 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th {
+        background: var(--card);
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .data-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .data-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .data-table tr:hover {
+        background: rgba(var(--accent-rgb), 0.03);
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .hero-content h1 {
+            font-size: 2rem;
+        }
+
+        .hero-content p {
+            font-size: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .tab-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Tab functionality
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', function () {
+                const tabId = this.getAttribute('data-tab');
+
+                // Remove active class from all tabs and contents
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+
+                // Add active class to clicked tab and corresponding content
+                this.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // File input styling
+        const fileInput = document.getElementById('file');
+        if (fileInput) {
+            fileInput.addEventListener('change', function () {
+                const fileName = this.files[0]?.name || 'Choose file';
+                const label = this.closest('.file-upload-label');
+                const textSpan = label.querySelector('.file-upload-text');
+
+                textSpan.textContent = fileName;
+            });
+        }
+    });
+</script>
+{% endblock %}
