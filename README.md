@@ -41,7 +41,9 @@ df_processed, report = advanced_preprocess_data(df, 'target_column')
 # Train model
 model, results, problem_type, summary = model_training(df_processed, 'target_column')
 print(summary)
-"
+
+```
+
  Supported Models
 Classification
 Random Forest, XGBoost, LightGBM, CatBoost
