@@ -22,7 +22,6 @@ project/
 ├── requirements.txt # Dependencies
 └── README.md # This file
 
-text
 
 ##  Quick Start
 ```bash
